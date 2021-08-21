@@ -110,7 +110,7 @@ class YoloV1(nn.Module):
 
 
 def test():
-    model = YoloV1(split_size=7, num_boxes=1, num_classes=5)
+    model = YoloV1(split_size=7, num_boxes=2, num_classes=20)
     x = torch.randn(2, 3, 448, 448)
     print(model(x).shape)
 

@@ -10,7 +10,7 @@ from utils import intersection_over_union
 
 
 class YoloLoss(nn.Module):
-    def __init__(self, split_size=7, num_boxes=1, num_classes=20):
+    def __init__(self, split_size=7, num_boxes=2, num_classes=20):
         super(YoloLoss, self).__init__()
         self.mse = nn.MSELoss(reduction="sum")
         self.split_size = split_size
@@ -21,20 +21,24 @@ class YoloLoss(nn.Module):
 
     def forward(self, predictions, target):
         predictions = predictions.reshape(-1, self.split_size, self.split_size, self.num_classes + self.num_boxes * 5)
-        # iou_b1 = intersection_over_union(predictions[..., 21:25], target[..., 21:25])
-        # iou_b2 = intersection_over_union(predictions[..., 26:30], target[..., 21:25])
-        # ious = torch.cat([iou_b1.unsqueeze(0), iou_b2.unsqueeze(0)], dim=0)
+        iou_b1 = intersection_over_union(predictions[..., 21:25], target[..., 21:25])
+        iou_b2 = intersection_over_union(predictions[..., 26:30], target[..., 21:25])
+        ious = torch.cat([iou_b1.unsqueeze(0), iou_b2.unsqueeze(0)], dim=0)
 
-        # iou_maxes, best_box = torch.max(ious, dim=0)
-        exists_box = target[..., self.num_classes].unsqueeze(3)
+        iou_maxes, best_box = torch.max(ious, dim=0)
+        exists_box = target[..., 20].unsqueeze(3)
 
         # ===================== #
         #  Calculate box loss   #
         # ===================== #
 
-        box_predictions = exists_box * predictions[..., self.num_classes+1:self.num_classes+5]
-
-        box_targets = exists_box * target[..., self.num_classes+1:self.num_classes+5]
+        box_predictions = exists_box *  (
+            (
+                    best_box * predictions[..., 26:30]
+                    + (1 - best_box) * predictions[..., 21:25]
+            )
+        )
+        box_targets = exists_box * target[..., 21:25]
 
         box_predictions[..., 2:4] = torch.sign(
             box_predictions[..., 2:4]) * torch.sqrt(torch.abs(box_predictions[..., 2:4] + 1e-6)
@@ -50,8 +54,12 @@ class YoloLoss(nn.Module):
         #  Calculate object loss if object exists #
         # ======================================= #
 
-        box_pred_confidence = exists_box * predictions[..., self.num_classes:self.num_classes+1]
-        box_targets_confidence = exists_box * target[..., self.num_classes:self.num_classes+1]
+        pred_box = (
+                best_box * predictions[..., 25:26] + (1 - best_box) * predictions[..., 20:21]
+        )
+
+        box_pred_confidence = exists_box * pred_box
+        box_targets_confidence = exists_box * target[..., 20:21]
 
         object_loss = self.mse(
             torch.flatten(box_pred_confidence),
@@ -62,8 +70,13 @@ class YoloLoss(nn.Module):
         # ========================== #
 
         no_object_loss = self.mse(
-            torch.flatten((1-exists_box) * predictions[..., self.num_classes:self.num_classes+1], start_dim=1),
-            torch.flatten((1-exists_box) * target[..., self.num_classes:self.num_classes+1], start_dim=1)
+            torch.flatten((1-exists_box) * predictions[..., 20:21], start_dim=1),
+            torch.flatten((1-exists_box) * target[..., 20:21], start_dim=1)
+        )
+
+        no_object_loss += self.mse(
+            torch.flatten((1 - exists_box) * predictions[..., 25:26], start_dim=1),
+            torch.flatten((1 - exists_box) * target[..., 20:21], start_dim=1)
         )
 
         # ====================== #
@@ -71,8 +84,8 @@ class YoloLoss(nn.Module):
         # ====================== #
 
         class_loss = self.mse(
-            torch.flatten(exists_box * predictions[..., :self.num_classes], end_dim=-2),
-            torch.flatten(exists_box * target[..., :self.num_classes], end_dim=-2)
+            torch.flatten(exists_box * predictions[..., :20], end_dim=-2),
+            torch.flatten(exists_box * target[..., :20], end_dim=-2)
         )
 
         loss = (
