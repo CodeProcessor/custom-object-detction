@@ -20,6 +20,7 @@ from loss import YoloLoss
 seed = 28
 torch.manual_seed(seed)
 
+CHANNELS=1
 NO_OF_CLASSES = 5
 NO_OF_BOXES = 1
 SPLIT_SIZE=7
@@ -50,7 +51,12 @@ class Compose(object):
         return img, boxes
 
 
-transform = Compose([transforms.Resize((448, 448)), transforms.ToTensor()])
+transform = Compose([
+    transforms.Resize((448, 448)),
+    transforms.Grayscale(num_output_channels=1),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5], std=[0.5])
+])
 loss_func = YoloLoss(split_size=SPLIT_SIZE, num_boxes=NO_OF_BOXES, num_classes=NO_OF_CLASSES)
 
 
@@ -73,7 +79,7 @@ def train_fn(train_loader, model, optimizer, loss_fn):
 
 
 def main():
-    model = YoloV1(split_size=SPLIT_SIZE, num_boxes=NO_OF_BOXES, num_classes=NO_OF_CLASSES).to(DEVICE)
+    model = YoloV1(input_channels=CHANNELS, split_size=SPLIT_SIZE, num_boxes=NO_OF_BOXES, num_classes=NO_OF_CLASSES).to(DEVICE)
     optimizer = optim.Adam(
         model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY
     )
