@@ -20,7 +20,7 @@ from loss import YoloLoss
 seed = 28
 torch.manual_seed(seed)
 
-NO_OF_CLASSES = 20
+NO_OF_CLASSES = 5
 NO_OF_BOXES = 1
 SPLIT_SIZE=7
 
@@ -51,7 +51,7 @@ class Compose(object):
 
 
 transform = Compose([transforms.Resize((448, 448)), transforms.ToTensor()])
-loss_func = YoloLoss()
+loss_func = YoloLoss(split_size=SPLIT_SIZE, num_boxes=NO_OF_BOXES, num_classes=NO_OF_CLASSES)
 
 
 def train_fn(train_loader, model, optimizer, loss_fn):
@@ -114,7 +114,7 @@ def main():
 
     for epoch in range(EPOCHS):
         pred_boxes, target_boxes = get_bboxes(
-            train_loader, model, iou_threshold=0.5, threshold=0.4, device=DEVICE
+            train_loader, model, iou_threshold=0.5, threshold=0.4, device=DEVICE, C=NO_OF_CLASSES
         )
 
         mean_avg_prec = mean_average_precision(
