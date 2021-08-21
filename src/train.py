@@ -7,29 +7,26 @@ Written by dulanj <dulanj@zone24x7.com>, 21 August 2021
 import torch
 import torchvision.transforms as transforms
 import torch.optim as optim
-import torchvision.transforms.functional as FT
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from model import YoloV1
 from dataset import WebDataset
 from utils import (
-    non_max_suppression,
     mean_average_precision,
-    intersection_over_union,
-    cellboxes_to_boxes,
-    get_bboxes,
-    plot_image,
-    save_checkpoint,
-    load_checkpoint,
+    get_bboxes
 )
 from loss import YoloLoss
 
 seed = 28
 torch.manual_seed(seed)
 
+NO_OF_CLASSES = 20
+NO_OF_BOXES = 1
+SPLIT_SIZE=7
+
 LR = 2e-5
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE=16
+BATCH_SIZE = 16
 WEIGHT_DECAY = 0
 EPOCHS = 10
 NUM_WORKERS = 2
@@ -54,7 +51,6 @@ class Compose(object):
 
 
 transform = Compose([transforms.Resize((448, 448)), transforms.ToTensor()])
-# transform = transforms.Compose([transforms.Resize((448, 448)), transforms.ToTensor()])
 loss_func = YoloLoss()
 
 
@@ -62,7 +58,7 @@ def train_fn(train_loader, model, optimizer, loss_fn):
     loop = tqdm(train_loader, leave=True)
     mean_loss = []
 
-    for batch_idx, (x,y) in enumerate(loop):
+    for batch_idx, (x, y) in enumerate(loop):
         x, y = x.to(DEVICE), y.to(DEVICE)
         out = model(x)
         loss = loss_fn(out, y)
@@ -73,11 +69,11 @@ def train_fn(train_loader, model, optimizer, loss_fn):
 
         loop.set_postfix(loss=loss.item())
 
-    print(f"Mean loss was {sum(mean_loss)/len(mean_loss)}")
+    print(f"Mean loss was {sum(mean_loss) / len(mean_loss)}")
 
 
 def main():
-    model = YoloV1(split_size=7, num_boxes=2, num_classes=20).to(DEVICE)
+    model = YoloV1(split_size=SPLIT_SIZE, num_boxes=NO_OF_BOXES, num_classes=NO_OF_CLASSES).to(DEVICE)
     optimizer = optim.Adam(
         model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY
     )
@@ -86,14 +82,16 @@ def main():
         csv_file="data/train.csv",
         transform=transform,
         img_dir=IMG_DIR,
-        label_dir=LABEL_DIR
+        label_dir=LABEL_DIR,
+        S=SPLIT_SIZE, B=NO_OF_BOXES, C=NO_OF_CLASSES
     )
 
     test_dataset = WebDataset(
         csv_file="data/test.csv",
         transform=transform,
         img_dir=IMG_DIR,
-        label_dir=LABEL_DIR
+        label_dir=LABEL_DIR,
+        S=SPLIT_SIZE, B=NO_OF_BOXES, C=NO_OF_CLASSES
     )
 
     train_loader = DataLoader(
@@ -134,4 +132,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
