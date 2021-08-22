@@ -34,8 +34,8 @@ NUM_WORKERS = 2
 PIN_MEMORY = True
 LOAD_MODEL = False
 LOAD_MODEL_FILE = ''
-IMG_DIR = '/home/dulanj/projects/FaceAuthMe/code/custom-object-detection/data/screenshots'
-LABEL_DIR = '/home/dulanj/projects/FaceAuthMe/code/custom-object-detection/data/annotated_data'
+IMG_DIR = 'data/screenshots'
+LABEL_DIR = 'data/annotated_data'
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -124,7 +124,7 @@ def main():
         )
 
         mean_avg_prec = mean_average_precision(
-            pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint"
+            pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint", num_classes=NO_OF_CLASSES
         )
         print(f"Train mAP: {mean_avg_prec}")
 
