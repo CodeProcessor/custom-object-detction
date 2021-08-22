@@ -29,7 +29,7 @@ LR = 2e-5
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 16
 WEIGHT_DECAY = 0
-EPOCHS = 10
+EPOCHS = 100
 NUM_WORKERS = 2
 PIN_MEMORY = True
 LOAD_MODEL = False
@@ -75,7 +75,9 @@ def train_fn(train_loader, model, optimizer, loss_fn):
 
         loop.set_postfix(loss=loss.item())
 
-    print(f"Mean loss was {sum(mean_loss) / len(mean_loss)}")
+    mean_average_loss =sum(mean_loss) / len(mean_loss)
+    print(f"Mean loss was {mean_average_loss}")
+    return mean_average_loss
 
 
 def main():
@@ -118,7 +120,9 @@ def main():
         drop_last=False
     )
 
+    current_loss = 1000
     for epoch in range(EPOCHS):
+        print(f"Epoch: {epoch+1}/{EPOCHS}")
         pred_boxes, target_boxes = get_bboxes(
             train_loader, model, iou_threshold=0.5, threshold=0.4, device=DEVICE, C=NO_OF_CLASSES
         )
@@ -128,12 +132,17 @@ def main():
         )
         print(f"Train mAP: {mean_avg_prec}")
 
-        train_fn(
+        mal = train_fn(
             train_loader=train_loader,
             model=model,
             optimizer=optimizer,
             loss_fn=loss_func
         )
+
+        if mal < current_loss:
+            print(f"saving best model pre loss > {current_loss} current loss > {mal}")
+            current_loss = mal
+            torch.save(model.state_dict(), 'trained_models/best-model-parameters.pt')
 
 
 if __name__ == '__main__':
