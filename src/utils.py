@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from collections import Counter
+import cv2
 
 
 def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
@@ -232,6 +233,37 @@ def plot_image(image, boxes):
         ax.add_patch(rect)
 
     plt.show()
+
+
+def get_class_dict():
+    file = "data/annotated_data/classes.txt"
+    class_dict = {}
+    with open(file) as fp:
+        for index, class_name in enumerate(fp.readlines()):
+            class_dict[f"{index}"] = class_name.replace('\n', '')
+    return class_dict
+
+
+def plot_image_custom(image, boxes, image_name="test_image.jpg"):
+    """Plots predicted bounding boxes on the image"""
+    im = np.array(image)*255
+    im = cv2.cvtColor(im, cv2.COLOR_GRAY2RGB)
+    height, width, _ = im.shape
+    class_dict = get_class_dict()
+    # Create a Rectangle potch
+    for box in boxes:
+        obj_class = class_dict[str(int(box[1]))]
+        box = box[2:]
+        assert len(box) == 4, "Got more values than in x, y, w, h, in a box!"
+        upper_left_x = box[0] - box[2] / 2
+        upper_left_y = box[1] - box[3] / 2
+        bottom_right_x = box[0] + box[2] / 2
+        bottom_right_y = box[1] + box[3] / 2
+        point1 = (int(upper_left_x * width), int(upper_left_y * height))
+        point2 = (int(bottom_right_x * width), int(bottom_right_y * height))
+        cv2.rectangle(im, pt1=point1, pt2=point2, color=(0,0,255),thickness=1, lineType=cv2.LINE_AA)
+        cv2.putText(im, text=obj_class, org=point1, fontFace=cv2.FONT_HERSHEY_PLAIN,fontScale=1, thickness=2,color=(0,255,0))
+    cv2.imwrite(image_name, im)
 
 def get_bboxes(
     loader,
