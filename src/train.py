@@ -24,6 +24,7 @@ CHANNELS=1
 NO_OF_CLASSES = 5
 NO_OF_BOXES = 1
 SPLIT_SIZE=7
+PATH='trained_models/best-model-parameters.pt'
 
 LR = 2e-5
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -120,7 +121,7 @@ def main():
         drop_last=False
     )
 
-    current_loss = 1000
+    current_map = 0.9
     for epoch in range(EPOCHS):
         print(f"Epoch: {epoch+1}/{EPOCHS}")
         pred_boxes, target_boxes = get_bboxes(
@@ -132,17 +133,17 @@ def main():
         )
         print(f"Train mAP: {mean_avg_prec}")
 
-        mal = train_fn(
+        train_fn(
             train_loader=train_loader,
             model=model,
             optimizer=optimizer,
             loss_fn=loss_func
         )
 
-        if mal < current_loss:
-            print(f"saving best model pre loss > {current_loss} current loss > {mal}")
-            current_loss = mal
-            torch.save(model.state_dict(), 'trained_models/best-model-parameters.pt')
+        if mean_avg_prec > current_map:
+            print(f"saving best model MAP > {current_map}")
+            current_map = mean_avg_prec
+            torch.save(model.state_dict(), PATH)
 
 
 if __name__ == '__main__':
